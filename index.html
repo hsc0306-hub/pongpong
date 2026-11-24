@@ -1185,8 +1185,8 @@ const KERR={'Invalid login credentials':'이메일 또는 비밀번호가 맞지
 const kerr=e=>KERR[e&&e.message]||(e&&/rate limit/i.test(e.message)?'요청이 너무 잦아요. 잠시 뒤 다시 해 주세요.':'문제가 생겼어요: '+((e&&e.message)||'알 수 없는 오류'));
 function metaName(u){const m=u.user_metadata||{};return String(m.name||m.nickname||m.full_name||m.preferred_username||(u.email||'').split('@')[0]||'친구').trim().slice(0,8)||'친구';}
 async function loadProfile(){
-  let{data,error}=await SB.from('profiles').select('nickname,ch,wins,games').eq('id',USER.id).maybeSingle();
-  if(!error&&!data){const ins={id:USER.id,nickname:metaName(USER),ch:S.ch};await SB.from('profiles').insert(ins);data={nickname:ins.nickname,ch:ins.ch,wins:0,games:0};}
+  let{data,error}=await SB.from('pongpong_profiles').select('nickname,ch,wins,games').eq('id',USER.id).maybeSingle();
+  if(!error&&!data){const ins={id:USER.id,nickname:metaName(USER),ch:S.ch};await SB.from('pongpong_profiles').insert(ins);data={nickname:ins.nickname,ch:ins.ch,wins:0,games:0};}
   PROFILE=data||{nickname:metaName(USER),ch:S.ch,wins:0,games:0};
   S.nick=PROFILE.nickname;S.ch=clampCh(PROFILE.ch);try{localStorage.setItem('pp_set',JSON.stringify(S))}catch(e){}
 }
@@ -1194,16 +1194,16 @@ function saveProfile(){
   if(!SB||!USER||!PROFILE)return;clearTimeout(profT);
   profT=setTimeout(async()=>{const nick=(S.nick||'').trim().slice(0,8)||PROFILE.nickname;
     if(nick===PROFILE.nickname&&S.ch===PROFILE.ch)return;
-    const{error}=await SB.from('profiles').update({nickname:nick,ch:S.ch,updated_at:new Date().toISOString()}).eq('id',USER.id);
+    const{error}=await SB.from('pongpong_profiles').update({nickname:nick,ch:S.ch,updated_at:new Date().toISOString()}).eq('id',USER.id);
     if(!error){PROFILE.nickname=nick;PROFILE.ch=S.ch;acctUI();loadBoard();}},700);
 }
 async function recordGame(won){
   if(!SB||!USER||!PROFILE)return;PROFILE.games++;if(won)PROFILE.wins++;acctUI();
-  try{await SB.rpc('record_game',{won:!!won});}catch(e){}loadBoard();
+  try{await SB.rpc('pongpong_record_game',{won:!!won});}catch(e){}loadBoard();
 }
 async function loadBoard(){
   if(!SB||!USER){$('boardP').hidden=true;return;}
-  const{data,error}=await SB.from('profiles').select('id,nickname,ch,wins,games').order('wins',{ascending:false}).order('games',{ascending:true}).limit(10);
+  const{data,error}=await SB.from('pongpong_profiles').select('id,nickname,ch,wins,games').order('wins',{ascending:false}).order('games',{ascending:true}).limit(10);
   if(error||!data){$('boardP').hidden=true;return;}
   $('boardP').hidden=false;
   $('board').innerHTML=data.map((r,i)=>`<li class="${r.id===USER.id?'me':''}"><span class="rk">${i+1}</span><canvas width="56" height="56" data-ch="${clampCh(r.ch)}"></canvas><span class="bn">${esc(r.nickname)}</span><span class="bw">${r.wins|0}승 <small>${r.games|0}판</small></span></li>`).join('')||'<li>아직 기록이 없어요.</li>';
